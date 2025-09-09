@@ -36,7 +36,7 @@ else:
 # -----------------------------
 # Step 2: Gemini Setup
 # -----------------------------
-API_KEY = "AIzaSyDDI5ARg46cPZbxD7EjhQPk5HxwwJAsnrg"   
+   
 gemini_model = genai.GenerativeModel("gemini-1.5-flash")
 
 QA_PROMPT = PromptTemplate(
