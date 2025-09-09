@@ -17,6 +17,7 @@ const AdminOrders = () => {
     try {
       setLoading(true);
       const response = await axios.get("http://localhost:8000/admin/orders");
+      console.log(response.data.orders); // <-- Add this line
       setOrders(response.data.orders);
       
       // Initialize status selection for each order
@@ -125,7 +126,7 @@ const AdminOrders = () => {
               {orders.map((order) => (
                 <tr key={order.id} style={{ borderBottom: "1px solid #000000ff" }}>
                   <td style={{ padding: "12px" }}>#{order.id}</td>
-                  <td style={{ padding: "12px" }}>{order.customer_name}</td>
+                  <td style={{ padding: "12px" }}>{order.customer_name} <br /> {order.phone_number}</td>
                   <td style={{ padding: "12px" }}>{order.item}</td>
                   <td style={{ padding: "12px" }}>{order.quantity}</td>
                   <td style={{ padding: "12px" }}>

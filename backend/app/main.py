@@ -100,6 +100,7 @@ def get_all_orders(db: Session = Depends(get_db)):
         {
             "id": o.id,
             "customer_name": o.customer_name,
+            "phone_number": o.phone_number,
             "item": o.item,
             "quantity": o.quantity,
             "status": o.status,
@@ -129,6 +130,7 @@ def update_order_status(order_id: int, update: UpdateOrderStatus, db: Session = 
     return {"message": f"Order #{order.id} status updated to {order.status}", "order": {
         "id": order.id,
         "customer_name": order.customer_name,
+        "phone_number": order.phone_number,
         "item": order.item,
         "quantity": order.quantity,
         "status": order.status,

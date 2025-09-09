@@ -5,11 +5,12 @@ import axios from "axios";
 import AdminOrders from "./components/AdminOrders"; // Changed from AdminPage to AdminOrders
 import "./App.css"; // Optional: for styling
 
+
 export default function App() {
   const [status, setStatus] = useState("idle");
   const [conversation, setConversation] = useState([]);
   const [orderItems, setOrderItems] = useState([]);
-  const [orderInfo, setOrderInfo] = useState({});
+  const orderInfoRef = useRef({});
   const [showAdmin, setShowAdmin] = useState(false); // Added missing state
 
   const chatEndRef = useRef(null);
@@ -82,13 +83,14 @@ export default function App() {
   };
 
   // ========================= ORDER FLOW =========================
-  const handleOrderName = async () => {
+    const handleOrderName = async () => {
     addMessage("assistant", "Please tell me your name for the order.");
     await speak("Please tell me your name for the order.");
 
     listen(async (name) => {
       addMessage("user", name);
-      setOrderInfo({ name });
+      // Use useRef instead of useState
+      orderInfoRef.current.name = name;
       handleOrderPhone();
     }, handleError("Order process aborted."));
   };
@@ -99,7 +101,8 @@ export default function App() {
 
     listen(async (phone) => {
       addMessage("user", phone);
-      setOrderInfo((prev) => ({ ...prev, phone }));
+      // Use useRef instead of useState
+      orderInfoRef.current.phone = phone;
       handleOrderItems();
     }, handleError("Order process aborted."));
   };
@@ -126,11 +129,25 @@ export default function App() {
             await speak("What else would you like to order?");
             addItem();
           } else {
-            // Place order to backend - FIXED: Ensure proper data types
+            // DEBUG: Check what's in orderInfoRef
+            console.log("Current orderInfoRef:", orderInfoRef.current);
+            console.log("Order items:", newOrderItems);
+            
+            // Validate that we have all required information
+            if (!orderInfoRef.current.name || !orderInfoRef.current.phone) {
+              addMessage("assistant", "I'm missing some information. Let's start over.");
+              await speak("I'm missing some information. Let's start over.");
+              setOrderItems([]);
+              orderInfoRef.current = {};
+              handleStart();
+              return;
+            }
+
+            // Place order to backend
             try {
               const orderData = {
-                customer_name: String(orderInfo.name),
-                phone_number: String(orderInfo.phone),
+                customer_name: String(orderInfoRef.current.name),
+                phone_number: String(orderInfoRef.current.phone),
                 item: String(newOrderItems.join(", ")),
                 quantity: Number(newOrderItems.length)
               };
@@ -150,7 +167,7 @@ export default function App() {
 
               // Reset order info
               setOrderItems([]);
-              setOrderInfo({});
+              orderInfoRef.current = {};
 
               // Ask continue or stop
               const continueMsg = "Anything else I can help you with? Say yes or no.";
@@ -184,7 +201,6 @@ export default function App() {
 
     addItem();
   };
-
   // ========================= LOCATION =========================
   const handleLocation = async () => {
     const locationUrl = "https://www.google.com/maps/place/123+Main+Street,+City";
