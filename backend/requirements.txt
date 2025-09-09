@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+langchain
+transformers
+torch
+torchaudio
+numpy
+pydantic
+sqlalchemy
+alembic
+boto3

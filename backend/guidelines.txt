@@ -1,0 +1,219 @@
+Cheezy Slice – Guidelines, Policies, and FAQs
+1. General Information
+
+Restaurant Name: Cheezy Slice
+
+Cuisine Type: Pizza and Fast Casual
+
+Operating Hours:
+
+Monday to Sunday: 11:00 AM – 11:00 PM
+
+Contact Information:
+
+Phone: +92-XXX-XXXXXXX
+
+Email: info@cheezyslice.com
+
+Address: [Insert Address Here]
+
+2. Ordering Policies
+
+Order Methods:
+
+In-person
+
+Phone
+
+Online through website or mobile app
+
+Order Confirmation:
+
+All online/phone orders require confirmation via SMS or app notification.
+
+Order Modifications:
+
+Changes to an order can be made within 5 minutes of placing it.
+
+After 5 minutes, the order is processed and cannot be modified.
+
+Custom Orders:
+
+Customers can customize toppings, crusts, and sauces.
+
+Allergens must be disclosed to the kitchen staff.
+
+3. Delivery & Takeaway Policies
+
+Delivery Time:
+
+Standard delivery time is 30–45 minutes depending on location.
+
+Peak hours may take up to 60 minutes.
+
+Delivery Charges:
+
+Within 5 km: Free
+
+Beyond 5 km: PKR 100 per additional km
+
+Contactless Delivery:
+
+Available on request.
+
+Order Tracking:
+
+Customers can track via app or website.
+
+Takeaway:
+
+Orders must be collected within 15 minutes of ready notification.
+
+4. Payment Policies
+
+Accepted Payment Methods:
+
+Cash on Delivery
+
+Debit/Credit Cards
+
+Mobile Wallets
+
+Online Payment (App/Website)
+
+Refunds & Cancellations:
+
+Refunds allowed if the order is incorrect, damaged, or not delivered.
+
+Partial refund may apply for late deliveries beyond 60 minutes.
+
+Cancellations allowed only before order preparation starts.
+
+5. Customer Guidelines
+
+Allergies & Dietary Restrictions:
+
+Customers must inform about allergies before ordering.
+
+Cheezy Slice is not responsible for cross-contamination in shared kitchen areas.
+
+Behavior in Restaurant:
+
+Respectful behavior towards staff and other customers is mandatory.
+
+Any harassment or misconduct may lead to service refusal.
+
+Feedback & Complaints:
+
+Feedback can be submitted via website, app, or directly to staff.
+
+Complaints will be addressed within 24 hours.
+
+6. FAQs (Decision-Based Responses)
+6.1 Menu & Ingredients
+
+Q: Can I substitute toppings?
+A: Yes, substitutions are allowed if available and within customization limits.
+
+Q: Are your pizzas vegetarian-friendly?
+A: Yes, vegetarian options are clearly marked on the menu.
+
+Q: Do you have vegan cheese?
+A: No, currently we only provide dairy-based cheese.
+
+6.2 Orders & Delivery
+
+Q: How long will my order take?
+A: Standard delivery is 30–45 minutes, longer during peak hours.
+
+Q: Can I track my delivery?
+A: Yes, via our app or website.
+
+Q: Can I change my order after placing it?
+A: Yes, but only within 5 minutes of placing the order.
+
+6.3 Payment & Refunds (continued)
+
+Q: Can I pay online?
+A: Yes, online payments via debit/credit card or mobile wallet are accepted.
+
+Q: What if my order is incorrect or damaged?
+A: Cheezy Slice will provide a full or partial refund or replacement depending on the issue. Please report within 24 hours.
+
+Q: Can I cancel my order?
+A: Orders can only be canceled before preparation begins. Once the order is in the kitchen, cancellation is not possible.
+
+6.4 Loyalty & Promotions
+
+Q: Do you have a loyalty program?
+A: Yes, customers earn points on every order which can be redeemed for discounts.
+
+Q: Can I use multiple promotions at once?
+A: No, only one promotion or discount can be applied per order.
+
+Q: Are there special deals on weekends?
+A: Yes, weekend deals are updated weekly on our app and website.
+
+6.5 Safety & Hygiene
+
+Q: How do you ensure food safety?
+A: All ingredients are fresh, kitchens are cleaned daily, and staff follow strict hygiene protocols.
+
+Q: Are your delivery staff trained in hygiene?
+A: Yes, delivery personnel wear gloves and masks, and practice contactless delivery when requested.
+
+6.6 Restaurant Rules & Decision Logic for Staff/AI
+
+Handling Late Orders:
+
+If delivery exceeds 60 minutes, offer 10% discount automatically.
+
+If customer cancels due to late delivery, provide partial refund.
+
+Handling Allergies:
+
+If a customer reports an allergy, confirm the ingredient list.
+
+Deny substitution if cross-contamination risk is high.
+
+Order Discrepancies:
+
+If items are missing or incorrect, replace immediately or issue refund.
+
+Unruly Customers:
+
+Remain polite.
+
+If behavior is threatening, refuse service and escalate to manager.
+
+Custom Orders:
+
+Allow only if kitchen can fulfill within standard preparation time.
+
+Deny if ingredients are unavailable or risk of allergy exists.
+
+7. Staff Guidelines
+
+Uniform & Hygiene: All staff must wear uniforms and maintain personal hygiene.
+
+Customer Interaction: Always greet politely, listen attentively, and respond clearly.
+
+Escalation Protocol:
+
+Minor issues → Staff handles directly
+
+Major issues or complaints → Escalate to manager
+
+Training: Staff must undergo monthly training on hygiene, customer service, and safety.
+
+8. AI Assistant Decision Guidelines
+
+Always prioritize customer safety, satisfaction, and policy compliance.
+
+Follow decision logic for refunds, substitutions, cancellations, and promotions.
+
+Check stock levels before confirming custom orders.
+
+Provide estimated delivery times and updates on delays.
+
+Direct any queries beyond AI’s scope to human manager.
