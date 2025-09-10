@@ -6,11 +6,45 @@ from .models.reservation import Reservation
 from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
-from .langchain import resolve_issue_with_guidelines
+from .langchain import resolve_issue_with_guidelines, add_document_to_vectorstore
 from fastapi import HTTPException
 from pydantic import BaseModel
 from datetime import datetime, timedelta
+import os
+import shutil
+from fastapi import UploadFile, File, Form
 app = FastAPI()
+UPLOAD_DIR = "uploaded_documents"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+# Make sure your CORS middleware allows file uploads
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # Your React app URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.post("/admin/upload-document")
+async def upload_document(file: UploadFile = File(...)):
+    try:
+        # Save the file
+        file_path = os.path.join(UPLOAD_DIR, file.filename)
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        # Process the document for RAG
+        result = add_document_to_vectorstore(file_path)
+        
+        return {
+            "message": "File uploaded and processed successfully",
+            "filename": file.filename,
+            "result": result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
+    finally:
+        file.file.close()
 
 app.add_middleware(
     CORSMiddleware,

@@ -536,39 +536,266 @@ const askToContinue = async () => {
 
 
   // Voice Assistant Component
-  const VoiceAssistant = () => (
-    <div style={{ padding: "2rem", fontFamily: "Arial, sans-serif" }}>
-      <h1>AI Voice Assistant</h1>
+ const VoiceAssistant = () => {
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+
+  return (
+    <div style={{ 
+      padding: "2rem", 
+      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      minHeight: "100vh",
+      backgroundColor: "#ffffff",
+      color: "#1a1a1a",
+      transition: "all 0.3s ease"
+    }}>
       
-      <div style={{ marginBottom: "1rem" }}>
-        <button onClick={handleStart} style={{ padding: "1rem 2rem", fontSize: "1.2rem", marginRight: "1rem" }}>
-          Start
-        </button>
-        <Link to="/admin" style={{ padding: "1rem 2rem", fontSize: "1.2rem", backgroundColor: "#555", color: "white", textDecoration: "none", display: "inline-block" }}>
-          Admin Dashboard
-        </Link>
-      </div>
-
-      <div style={{ marginTop: "2rem", height: "400px", overflowY: "auto", backgroundColor: "#000", color: "#fff", border: "1px solid #fff", padding: "1rem" }}>
-        {conversation.map((msg, idx) => (
-          <div key={idx} style={{ margin: "0.5rem 0" }}>
-            <strong>{msg.sender === "assistant" ? "AI" : "You"}:</strong> {msg.text}
+      {/* Header with Logo and Navigation */}
+      <div style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: "3rem",
+        paddingBottom: "1.5rem",
+        borderBottom: "1px solid #f0f0f0"
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+          <div style={{
+            width: "40px",
+            height: "40px",
+            backgroundColor: "#000",
+            borderRadius: "8px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#fff",
+            fontWeight: "bold",
+            fontSize: "1.2rem"
+          }}>
+            SS
           </div>
-        ))}
-        <div ref={chatEndRef} />
+          <h1 style={{ 
+            margin: 0, 
+            fontSize: "1.8rem", 
+            fontWeight: 400,
+            letterSpacing: "-0.02em"
+          }}>
+            Sonic Savor
+          </h1>
+        </div>
+
+        {/* Navigation Icons */}
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          {/* Settings Gear Icon */}
+          <span
+            onClick={() => setShowSettingsMenu(!showSettingsMenu)}
+            style={{
+              fontSize: "1.5rem",
+              cursor: "pointer",
+              padding: "0.75rem",
+              borderRadius: "50%",
+              transition: "all 0.3s ease",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "50px",
+              height: "50px"
+            }}
+            onMouseEnter={(e) => e.target.style.backgroundColor = "#f8f8f8"}
+            onMouseLeave={(e) => e.target.style.backgroundColor = "transparent"}
+          >
+            ⚙️
+          </span>
+        </div>
       </div>
 
-      <div style={{ marginTop: "1rem" }}>
-        <strong>Status:</strong> {status}
+      {/* Settings Dropdown */}
+      {showSettingsMenu && (
+        <div style={{
+          position: "fixed",
+          top: "78px",
+          right: "14.5rem",
+          backgroundColor: "rgba(0, 0, 0, 0.02)",
+          border: "1px solid #f0f0f0",
+          borderRadius: "12px",
+          padding: "0.0rem",
+          boxShadow: "0 10px 40px rgba(0,0,0,0.1)",
+          zIndex: 1000,
+          minWidth: "200px"
+        }}>
+          <Link 
+            to="/admin" 
+            style={{ 
+              display: "block", 
+              padding: "0.75rem 1rem", 
+              textDecoration: "none", 
+              color: "#ffffffff",
+              borderRadius: "8px",
+              transition: "background-color 0.2s"
+            }}
+            onMouseEnter={(e) => e.target.style.backgroundColor = "#7d7d7dff"}
+            onMouseLeave={(e) => e.target.style.backgroundColor = "transparent"}
+            onClick={() => setShowSettingsMenu(false)}
+          >
+            Admin Page
+          </Link>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <div style={{ maxWidth: "600px", margin: "0 auto" }}>
+        {/* Welcome Message */}
+        <div style={{ textAlign: "center", marginBottom: "3rem" }}>
+          <h2 style={{ 
+            fontSize: "2.5rem", 
+            fontWeight: 300, 
+            margin: "0 0 1rem 0",
+            letterSpacing: "-0.02em"
+          }}>
+            Welcome to Sonic Savor
+          </h2>
+          <p style={{ 
+            color: "#666", 
+            fontSize: "1.1rem",
+            lineHeight: 1.6,
+            margin: 0
+          }}>
+            Your voice-powered dining experience. Speak naturally to order, 
+            make reservations, or get assistance.
+          </p>
+        </div>
+
+        {/* Start Button */}
+        <div style={{ textAlign: "center", marginBottom: "3rem" }}>
+          <button 
+            onClick={handleStart}
+            style={{ 
+              padding: "1.25rem 3rem",
+              fontSize: "1.1rem",
+              backgroundColor: "#000",
+              color: "#fff",
+              border: "none",
+              borderRadius: "50px",
+              cursor: "pointer",
+              transition: "all 0.3s ease",
+              fontWeight: 500
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.backgroundColor = "#333";
+              e.target.style.transform = "translateY(-2px)";
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.backgroundColor = "#000";
+              e.target.style.transform = "translateY(0)";
+            }}
+          >
+            Start Voice Assistant
+          </button>
+        </div>
+
+        {/* Conversation Container */}
+        <div style={{ 
+          backgroundColor: "#fafafa",
+          borderRadius: "16px",
+          padding: "2rem",
+          minHeight: "400px",
+          border: "1px solid #f0f0f0"
+        }}>
+          <div style={{ 
+            height: "400px", 
+            overflowY: "auto",
+            paddingRight: "1rem"
+          }}>
+            <style>
+              {`
+                ::-webkit-scrollbar {
+                  width: 4px;
+                }
+                ::-webkit-scrollbar-track {
+                  background: #f1f1f1;
+                  border-radius: 10px;
+                }
+                ::-webkit-scrollbar-thumb {
+                  background: #ddd;
+                  border-radius: 10px;
+                }
+                ::-webkit-scrollbar-thumb:hover {
+                  background: #ccc;
+                }
+              `}
+            </style>
+            
+            {conversation.length === 0 ? (
+              <div style={{ 
+                textAlign: "center", 
+                color: "#999",
+                height: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center"
+              }}>
+                <p>Start a conversation to see messages here</p>
+              </div>
+            ) : (
+              conversation.map((msg, idx) => (
+                <div key={idx} style={{ 
+                  margin: "1rem 0",
+                  padding: "1rem",
+                  backgroundColor: msg.sender === "assistant" ? "#f8f8f8" : "transparent",
+                  borderRadius: "12px",
+                  border: msg.sender === "user" ? "1px solid #f0f0f0" : "none"
+                }}>
+                  <strong style={{ 
+                    color: msg.sender === "assistant" ? "#666" : "#000",
+                    fontSize: "0.9rem",
+                    display: "block",
+                    marginBottom: "0.5rem"
+                  }}>
+                    {msg.sender === "assistant" ? "AI" : "You"}:
+                  </strong>
+                  <div style={{ color: "#1a1a1a", lineHeight: 1.5 }}>
+                    {msg.text}
+                  </div>
+                </div>
+              ))
+            )}
+            <div ref={chatEndRef} />
+          </div>
+        </div>
+
+        {/* Status Indicator */}
+        <div style={{ 
+          marginTop: "1.5rem",
+          textAlign: "center",
+          color: "#666",
+          fontSize: "0.9rem"
+        }}>
+          <strong>Status:</strong> {status}
+        </div>
       </div>
+
+      {/* Click outside to close settings menu */}
+      {showSettingsMenu && (
+        <div 
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 999
+          }}
+          onClick={() => setShowSettingsMenu(false)}
+        />
+      )}
     </div>
   );
+};
 
   return (
     <Router>
       <Routes>
         <Route path="/" element={<VoiceAssistant />} />
-        <Route path="/admin" element={<AdminOrders />} />
+        <Route path="/admin" element={<AdminOrders />} /> {/* Changed from AdminPage to AdminOrders */}
       </Routes>
     </Router>
   );

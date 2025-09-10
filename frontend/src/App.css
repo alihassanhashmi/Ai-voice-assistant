@@ -55,3 +55,19 @@
 .admin-link:hover {
   background-color: #777;
 }
+
+.hidden-scrollbar {
+  margin-top: 2rem;
+  height: 400px;
+  overflow-y: auto;
+  background-color: #000;
+  color: #fff;
+  border: 1px solid #fff;
+  padding: 1rem;
+  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;  /* IE/Edge */
+}
+
+.hidden-scrollbar::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari */
+}
