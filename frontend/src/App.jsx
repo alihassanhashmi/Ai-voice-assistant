@@ -2,25 +2,64 @@ import React, { useState, useRef, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import { speak, listen } from "./utils/speech";
 import axios from "axios";
-import AdminOrders from "./components/AdminOrders"; // Changed from AdminPage to AdminOrders
-import "./App.css"; // Optional: for styling
-
+import AdminOrders from "./components/AdminOrders";
+import "./App.css";
 
 export default function App() {
   const [status, setStatus] = useState("idle");
   const [conversation, setConversation] = useState([]);
   const [orderItems, setOrderItems] = useState([]);
   const orderInfoRef = useRef({});
-  const [showAdmin, setShowAdmin] = useState(false); // Added missing state
-
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [adminToken, setAdminToken] = useState(localStorage.getItem("adminToken") || "");
+  const currentItemsRef = useRef([...orderItems]);
   const chatEndRef = useRef(null);
+  const conversationContainerRef = useRef(null);
+  const userScrolledUp = useRef(false);
+
+  // Scroll handling
+  useEffect(() => {
+    if (conversation.length === 0 || userScrolledUp.current) return;
+    const timer = setTimeout(() => {
+      if (chatEndRef.current) {
+        chatEndRef.current.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest"
+        });
+      }
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [conversation]);
+
+  const handleScroll = () => {
+    if (conversationContainerRef.current) {
+      const container = conversationContainerRef.current;
+      const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 50;
+      userScrolledUp.current = !isAtBottom;
+    }
+  };
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (conversation.length === 0) {
+      userScrolledUp.current = false;
+    }
   }, [conversation]);
 
   const addMessage = (sender, text) => {
     setConversation((prev) => [...prev, { sender, text }]);
+    if (sender === "assistant") {
+      userScrolledUp.current = false;
+    }
+  };
+
+  const scrollToBottom = () => {
+    userScrolledUp.current = false;
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest"
+      });
+    }
   };
 
   const normalizeInput = (text) => {
@@ -62,11 +101,11 @@ export default function App() {
       const normalized = normalizeInput(result);
       addMessage("user", result);
 
-      if (normalized.includes("1") || normalized.includes("order")|| normalized.includes("one")) {
+      if (normalized.includes("1") || normalized.includes("order") || normalized.includes("one")) {
         handleOrderName();
-      } else if (normalized.includes("2") || normalized.includes("menu")|| normalized.includes("two")) {
+      } else if (normalized.includes("2") || normalized.includes("menu") || normalized.includes("two")) {
         handleMenuInquiry();
-      } else if (normalized.includes("3") || normalized.includes("reservation") || normalized.includes("three") ) {
+      } else if (normalized.includes("3") || normalized.includes("reservation") || normalized.includes("three")) {
         handleReservation();
       } else if (normalized.includes("4") || normalized.includes("issue") || normalized.includes("four")) {
         handleClientIssue();
@@ -83,13 +122,12 @@ export default function App() {
   };
 
   // ========================= ORDER FLOW =========================
-    const handleOrderName = async () => {
+  const handleOrderName = async () => {
     addMessage("assistant", "Please tell me your name for the order.");
     await speak("Please tell me your name for the order.");
 
     listen(async (name) => {
       addMessage("user", name);
-      // Use useRef instead of useState
       orderInfoRef.current.name = name;
       handleOrderPhone();
     }, handleError("Order process aborted."));
@@ -101,106 +139,159 @@ export default function App() {
 
     listen(async (phone) => {
       addMessage("user", phone);
-      // Use useRef instead of useState
       orderInfoRef.current.phone = phone;
+      setOrderItems([]); // Reset items before starting
       handleOrderItems();
     }, handleError("Order process aborted."));
   };
 
   const handleOrderItems = async () => {
-    addMessage("assistant", "What would you like to order?");
-    await speak("What would you like to order?");
+  addMessage("assistant", "What would you like to order?");
+  await speak("What would you like to order?");
 
-    const addItem = () => {
-      listen(async (item) => {
-        const newOrderItems = [...orderItems, item];
-        setOrderItems(newOrderItems);
-        addMessage("user", item);
+  // Use a ref to track the current items to avoid closure issues
+  
+  
+  const addItem = () => {
+    listen(async (item) => {
+      console.log("Heard item:", item);
 
-        const msg = `Added ${item}. Do you want to add another item? Say yes or no.`;
-        addMessage("assistant", msg);
-        await speak(msg);
+      if (!item || item.trim() === "") {
+        addMessage("assistant", "Sorry, I didn't hear that. Please tell me what you'd like to order.");
+        await speak("Sorry, I didn't hear that. Please tell me what you'd like to order.");
+        addItem();
+        return;
+      }
 
-        listen(async (answer) => {
-          const normalized = normalizeInput(answer);
-          addMessage("user", answer);
+      addMessage("user", item);
 
-          if (normalized.includes("yes")) {
-            await speak("What else would you like to order?");
-            addItem();
-          } else {
-            // DEBUG: Check what's in orderInfoRef
-            console.log("Current orderInfoRef:", orderInfoRef.current);
-            console.log("Order items:", newOrderItems);
-            
-            // Validate that we have all required information
-            if (!orderInfoRef.current.name || !orderInfoRef.current.phone) {
-              addMessage("assistant", "I'm missing some information. Let's start over.");
-              await speak("I'm missing some information. Let's start over.");
-              setOrderItems([]);
-              orderInfoRef.current = {};
-              handleStart();
-              return;
-            }
+      // Update both the ref and state
+      currentItemsRef.current = [...currentItemsRef.current, item];
+      setOrderItems(currentItemsRef.current);
 
-            // Place order to backend
-            try {
-              const orderData = {
-                customer_name: String(orderInfoRef.current.name),
-                phone_number: String(orderInfoRef.current.phone),
-                item: String(newOrderItems.join(", ")),
-                quantity: Number(newOrderItems.length)
-              };
-              
-              console.log("Sending order data:", orderData);
-              
-              const response = await axios.post("http://localhost:8000/order", orderData, {
-                headers: {
-                  'Content-Type': 'application/json'
-                }
-              });
-              
-              const orderNumber = response.data.order_id;
-              const summary = `Your order is: ${newOrderItems.join(", ")}. Order number: #${orderNumber}.`;
-              addMessage("assistant", summary);
-              await speak(summary);
+      const msg = `Added ${item}. Do you want to add another item? Say yes or no.`;
+      addMessage("assistant", msg);
+      await speak(msg);
 
-              // Reset order info
-              setOrderItems([]);
-              orderInfoRef.current = {};
-
-              // Ask continue or stop
-              const continueMsg = "Anything else I can help you with? Say yes or no.";
-              addMessage("assistant", continueMsg);
-              await speak(continueMsg);
-
-              listen(async (answer) => {
-                const normalizedAns = normalizeInput(answer);
-                addMessage("user", answer);
-                if (normalizedAns.includes("yes")) {
-                  startListening();
-                } else {
-                  const goodbyeMsg = "Thank you for your order! Have a great day!";
-                  addMessage("assistant", goodbyeMsg);
-                  await speak(goodbyeMsg);
-                  setStatus("idle");
-                }
-              }, handleError("Order process completed."));
-
-            } catch (err) {
-              console.error("Order error:", err.response?.data || err.message);
-              const errorMsg = "Failed to place order. Please try again.";
-              addMessage("assistant", errorMsg);
-              await speak(errorMsg);
-              setStatus("idle");
-            }
-          }
-        }, handleError("Order process aborted."));
-      }, handleError("Order process aborted."));
-    };
-
-    addItem();
+      // Now call listenForAddAnother with the current ref value
+      listenForAddAnother();
+    }, (error) => {
+      console.error("Listen error:", error);
+      addMessage("assistant", "I'm having trouble hearing you. Please try again.");
+      speak("I'm having trouble hearing you. Please try again.").then(() => {
+        addItem();
+      });
+    });
   };
+
+  const listenForAddAnother = () => {
+    listen(async (answer) => {
+      console.log("Heard answer:", answer);
+
+      if (!answer || answer.trim() === "") {
+        addMessage("assistant", "I didn't catch that. Do you want to add another item? Say yes or no.");
+        await speak("I didn't catch that. Do you want to add another item? Say yes or no.");
+        listenForAddAnother();
+        return;
+      }
+
+      const normalized = normalizeInput(answer);
+      addMessage("user", answer);
+
+      if (normalized.includes("yes")) {
+        addMessage("assistant", "What else would you like to order?");
+        await speak("What else would you like to order?");
+        addItem();
+      } else {
+        completeOrder();
+      }
+    }, (error) => {
+      console.error("Listen error:", error);
+      addMessage("assistant", "I'm having trouble hearing you. Do you want to add another item?");
+      speak("I'm having trouble hearing you. Do you want to add another item?").then(() => {
+        listenForAddAnother();
+      });
+    });
+  };
+
+  const completeOrder = async () => {
+    const items = currentItemsRef.current;
+    console.log("Current orderInfoRef:", orderInfoRef.current);
+    console.log("Order items:", items);
+
+    if (!orderInfoRef.current.name || !orderInfoRef.current.phone) {
+      addMessage("assistant", "I'm missing some information. Let's start over.");
+      await speak("I'm missing some information. Let's start over.");
+      setOrderItems([]);
+      currentItemsRef.current = [];
+      orderInfoRef.current = {};
+      handleStart();
+      return;
+    }
+
+    try {
+      const orderData = {
+        customer_name: orderInfoRef.current.name,
+        phone_number: orderInfoRef.current.phone,
+        item: items.join(", "),
+        quantity: items.length
+      };
+
+      console.log("Sending order data:", orderData);
+
+      const response = await axios.post("http://localhost:8000/order", orderData, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const orderNumber = response.data.order_id;
+      const summary = `Your order is: ${items.join(", ")}. Order number: #${orderNumber}.`;
+      addMessage("assistant", summary);
+      await speak(summary);
+
+      // Reset order info
+      setOrderItems([]);
+      currentItemsRef.current = [];
+      orderInfoRef.current = {};
+
+      // Ask continue or stop
+      const continueMsg = "Anything else I can help you with? Say yes or no.";
+      addMessage("assistant", continueMsg);
+      await speak(continueMsg);
+
+      setTimeout(() => {
+        listen(async (answer) => {
+          const normalizedAns = normalizeInput(answer);
+          addMessage("user", answer);
+          if (normalizedAns.includes("yes")) {
+            startListening();
+          } else {
+            const goodbyeMsg = "Thank you for your order! Have a great day!";
+            addMessage("assistant", goodbyeMsg);
+            await speak(goodbyeMsg);
+            setStatus("idle");
+          }
+        }, handleError("Order process completed."));
+      }, 1000);
+
+    } catch (err) {
+      console.error("Order error:", err.response?.data || err.message);
+      const errorMsg = "Failed to place order. Please try again.";
+      addMessage("assistant", errorMsg);
+      await speak(errorMsg);
+      setStatus("idle");
+    }
+  };
+
+  addItem();
+};
+  // ... (rest of your handlers: handleMenuInquiry, handleLocation, handleReservation, handleClientIssue, etc.) ...
+  // (You can keep your existing implementations for those.)
+
+ 
+
+
    // ========================= LOCATION =========================
   const handleMenuInquiry = async () => {
   const msg = "Sure! What would you like to know about our menu? You can ask about categories, specific dishes, prices, or dietary options.";
@@ -222,7 +313,7 @@ export default function App() {
       await speak(aiResponse);
       
       // Ask if they want to know more
-      const continueMsg = "Would you like to know anything else about our menu? Say yes or no.";
+      const continueMsg = "Would you like to order something or ask another menu question?";
       addMessage("assistant", continueMsg);
       await speak(continueMsg);
 
@@ -230,9 +321,13 @@ export default function App() {
         const normalized = normalizeInput(answer);
         addMessage("user", answer);
         
-        if (normalized.includes("yes")) {
+        if (normalized.includes("items") || normalized.includes("menu") || normalized.includes("more")) {
           handleMenuInquiry(); // Restart menu inquiry
-        } else {
+        } 
+        else if (normalized.includes("order")) {
+          handleOrderName(); // Proceed to order
+        }
+        else {
           const goodbyeMsg = "Great! Let me know if you need anything else.";
           addMessage("assistant", goodbyeMsg);
           await speak(goodbyeMsg);
@@ -589,266 +684,299 @@ const askToContinue = async () => {
 
 
   // Voice Assistant Component
- const VoiceAssistant = () => {
-  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+  const VoiceAssistant = () => {
+    const [showSettingsMenu, setShowSettingsMenu] = useState(false);
 
-  return (
-    <div style={{ 
-      padding: "2rem", 
-      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-      minHeight: "100vh",
-      backgroundColor: "#ffffff",
-      color: "#1a1a1a",
-      transition: "all 0.3s ease"
-    }}>
-      
-      {/* Header with Logo and Navigation */}
-      <div style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: "3rem",
-        paddingBottom: "1.5rem",
-        borderBottom: "1px solid #f0f0f0"
+    return (
+      <div style={{ 
+        padding: "2rem", 
+        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        minHeight: "100vh",
+        backgroundColor: "#ffffff",
+        color: "#1a1a1a",
+        transition: "all 0.3s ease"
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-          <div style={{
-            width: "40px",
-            height: "40px",
-            backgroundColor: "#000",
-            borderRadius: "8px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#fff",
-            fontWeight: "bold",
-            fontSize: "1.2rem"
-          }}>
-            SS
-          </div>
-          <h1 style={{ 
-            margin: 0, 
-            fontSize: "1.8rem", 
-            fontWeight: 400,
-            letterSpacing: "-0.02em"
-          }}>
-            Sonic Savor
-          </h1>
-        </div>
-
-        {/* Navigation Icons */}
-        <div style={{ display: "flex", gap: "0.5rem" }}>
-          {/* Settings Gear Icon */}
-          <span
-            onClick={() => setShowSettingsMenu(!showSettingsMenu)}
-            style={{
-              fontSize: "1.5rem",
-              cursor: "pointer",
-              padding: "0.75rem",
-              borderRadius: "50%",
-              transition: "all 0.3s ease",
+        
+        {/* Header with Logo and Navigation */}
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "3rem",
+          paddingBottom: "1.5rem",
+          borderBottom: "1px solid #f0f0f0"
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            <div style={{
+              width: "40px",
+              height: "40px",
+              backgroundColor: "#000",
+              borderRadius: "8px",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              width: "50px",
-              height: "50px"
-            }}
-            onMouseEnter={(e) => e.target.style.backgroundColor = "#f8f8f8"}
-            onMouseLeave={(e) => e.target.style.backgroundColor = "transparent"}
-          >
-            ⚙️
-          </span>
-        </div>
-      </div>
-
-      {/* Settings Dropdown */}
-      {showSettingsMenu && (
-        <div style={{
-          position: "fixed",
-          top: "78px",
-          right: "14.5rem",
-          backgroundColor: "rgba(0, 0, 0, 0.02)",
-          border: "1px solid #f0f0f0",
-          borderRadius: "12px",
-          padding: "0.0rem",
-          boxShadow: "0 10px 40px rgba(0,0,0,0.1)",
-          zIndex: 1000,
-          minWidth: "200px"
-        }}>
-          <Link 
-            to="/admin" 
-            style={{ 
-              display: "block", 
-              padding: "0.75rem 1rem", 
-              textDecoration: "none", 
-              color: "#ffffffff",
-              borderRadius: "8px",
-              transition: "background-color 0.2s"
-            }}
-            onMouseEnter={(e) => e.target.style.backgroundColor = "#7d7d7dff"}
-            onMouseLeave={(e) => e.target.style.backgroundColor = "transparent"}
-            onClick={() => setShowSettingsMenu(false)}
-          >
-            Admin Page
-          </Link>
-        </div>
-      )}
-
-      {/* Main Content */}
-      <div style={{ maxWidth: "600px", margin: "0 auto" }}>
-        {/* Welcome Message */}
-        <div style={{ textAlign: "center", marginBottom: "3rem" }}>
-          <h2 style={{ 
-            fontSize: "2.5rem", 
-            fontWeight: 300, 
-            margin: "0 0 1rem 0",
-            letterSpacing: "-0.02em"
-          }}>
-            Welcome to Sonic Savor
-          </h2>
-          <p style={{ 
-            color: "#666", 
-            fontSize: "1.1rem",
-            lineHeight: 1.6,
-            margin: 0
-          }}>
-            Your voice-powered dining experience. Speak naturally to order, 
-            make reservations, or get assistance.
-          </p>
-        </div>
-
-        {/* Start Button */}
-        <div style={{ textAlign: "center", marginBottom: "3rem" }}>
-          <button 
-            onClick={handleStart}
-            style={{ 
-              padding: "1.25rem 3rem",
-              fontSize: "1.1rem",
-              backgroundColor: "#000",
               color: "#fff",
-              border: "none",
-              borderRadius: "50px",
-              cursor: "pointer",
-              transition: "all 0.3s ease",
-              fontWeight: 500
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.backgroundColor = "#333";
-              e.target.style.transform = "translateY(-2px)";
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.backgroundColor = "#000";
-              e.target.style.transform = "translateY(0)";
-            }}
-          >
-            Start Voice Assistant
-          </button>
-        </div>
+              fontWeight: "bold",
+              fontSize: "1.2rem"
+            }}>
+              SS
+            </div>
+            <h1 style={{ 
+              margin: 0, 
+              fontSize: "1.8rem", 
+              fontWeight: 400,
+              letterSpacing: "-0.02em"
+            }}>
+              Sonic Savor
+            </h1>
+          </div>
 
-        {/* Conversation Container */}
-        <div style={{ 
-          backgroundColor: "#fafafa",
-          borderRadius: "16px",
-          padding: "2rem",
-          minHeight: "400px",
-          border: "1px solid #f0f0f0"
-        }}>
-          <div style={{ 
-            height: "400px", 
-            overflowY: "auto",
-            paddingRight: "1rem"
-          }}>
-            <style>
-              {`
-                ::-webkit-scrollbar {
-                  width: 4px;
-                }
-                ::-webkit-scrollbar-track {
-                  background: #f1f1f1;
-                  border-radius: 10px;
-                }
-                ::-webkit-scrollbar-thumb {
-                  background: #ddd;
-                  border-radius: 10px;
-                }
-                ::-webkit-scrollbar-thumb:hover {
-                  background: #ccc;
-                }
-              `}
-            </style>
-            
-            {conversation.length === 0 ? (
-              <div style={{ 
-                textAlign: "center", 
-                color: "#999",
-                height: "100%",
+          {/* Navigation Icons */}
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            {/* Settings Gear Icon */}
+            <span
+              onClick={() => setShowSettingsMenu(!showSettingsMenu)}
+              style={{
+                fontSize: "1.5rem",
+                cursor: "pointer",
+                padding: "0.75rem",
+                borderRadius: "50%",
+                transition: "all 0.3s ease",
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "center"
-              }}>
-                <p>Start a conversation to see messages here</p>
-              </div>
-            ) : (
-              conversation.map((msg, idx) => (
-                <div key={idx} style={{ 
-                  margin: "1rem 0",
-                  padding: "1rem",
-                  backgroundColor: msg.sender === "assistant" ? "#f8f8f8" : "transparent",
-                  borderRadius: "12px",
-                  border: msg.sender === "user" ? "1px solid #f0f0f0" : "none"
-                }}>
-                  <strong style={{ 
-                    color: msg.sender === "assistant" ? "#666" : "#000",
-                    fontSize: "0.9rem",
-                    display: "block",
-                    marginBottom: "0.5rem"
-                  }}>
-                    {msg.sender === "assistant" ? "AI" : "You"}:
-                  </strong>
-                  <div style={{ color: "#1a1a1a", lineHeight: 1.5 }}>
-                    {msg.text}
-                  </div>
-                </div>
-              ))
-            )}
-            <div ref={chatEndRef} />
+                justifyContent: "center",
+                width: "50px",
+                height: "50px"
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = "#f8f8f8"}
+              onMouseLeave={(e) => e.target.style.backgroundColor = "transparent"}
+            >
+              ⚙️
+            </span>
           </div>
         </div>
 
-        {/* Status Indicator */}
-        <div style={{ 
-          marginTop: "1.5rem",
-          textAlign: "center",
-          color: "#666",
-          fontSize: "0.9rem"
-        }}>
-          <strong>Status:</strong> {status}
-        </div>
-      </div>
-
-      {/* Click outside to close settings menu */}
-      {showSettingsMenu && (
-        <div 
-          style={{
+        {/* Settings Dropdown */}
+        {showSettingsMenu && (
+          <div style={{
             position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 999
-          }}
-          onClick={() => setShowSettingsMenu(false)}
-        />
-      )}
-    </div>
-  );
-};
+            top: "78px",
+            right: "14.5rem",
+            backgroundColor: "rgba(0, 0, 0, 0.02)",
+            border: "1px solid #f0f0f0",
+            borderRadius: "12px",
+            padding: "0.0rem",
+            boxShadow: "0 10px 40px rgba(0,0,0,0.1)",
+            zIndex: 1000,
+            minWidth: "200px"
+          }}>
+            <Link 
+              to="/admin" 
+              style={{ 
+                display: "block", 
+                padding: "0.75rem 1rem", 
+                textDecoration: "none", 
+                color: "#ffffffff",
+                borderRadius: "8px",
+                transition: "background-color 0.2s"
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = "#7d7d7dff"}
+              onMouseLeave={(e) => e.target.style.backgroundColor = "transparent"}
+              onClick={() => setShowSettingsMenu(false)}
+            >
+              Admin Page
+            </Link>
+          </div>
+        )}
+
+        {/* Main Content */}
+        <div style={{ maxWidth: "600px", margin: "0 auto" }}>
+          {/* Welcome Message */}
+          <div style={{ textAlign: "center", marginBottom: "3rem" }}>
+            <h2 style={{ 
+              fontSize: "2.5rem", 
+              fontWeight: 300, 
+              margin: "0 0 1rem 0",
+              letterSpacing: "-0.02em"
+            }}>
+              Welcome to Sonic Savor
+            </h2>
+            <p style={{ 
+              color: "#666", 
+              fontSize: "1.1rem",
+              lineHeight: 1.6,
+              margin: 0
+            }}>
+              Your voice-powered dining experience. Speak naturally to order, 
+              make reservations, or get assistance.
+            </p>
+          </div>
+
+          {/* Start Button */}
+          <div style={{ textAlign: "center", marginBottom: "3rem" }}>
+            <button 
+              onClick={handleStart}
+              style={{ 
+                padding: "1.25rem 3rem",
+                fontSize: "1.1rem",
+                backgroundColor: "#000",
+                color: "#fff",
+                border: "none",
+                borderRadius: "50px",
+                cursor: "pointer",
+                transition: "all 0.3s ease",
+                fontWeight: 500
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = "#333";
+                e.target.style.transform = "translateY(-2px)";
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = "#000";
+                e.target.style.transform = "translateY(0)";
+              }}
+            >
+              Start Voice Assistant
+            </button>
+          </div>
+
+          {/* Conversation Container */}
+          <div style={{ 
+            backgroundColor: "#fafafa",
+            borderRadius: "16px",
+            padding: "2rem",
+            minHeight: "400px",
+            border: "1px solid #f0f0f0",
+            position: "relative"
+          }}>
+            {/* Scroll to bottom button */}
+            {userScrolledUp.current && (
+              <button
+                onClick={scrollToBottom}
+                style={{
+                  position: "absolute",
+                  right: "2rem",
+                  bottom: "2rem",
+                  backgroundColor: "#000",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "50%",
+                  width: "40px",
+                  height: "40px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "1.2rem",
+                  zIndex: 10,
+                  boxShadow: "0 2px 10px rgba(0,0,0,0.2)"
+                }}
+                title="Scroll to bottom"
+              >
+                ↓
+              </button>
+            )}
+            
+            <div 
+              ref={conversationContainerRef}
+              style={{ 
+                height: "400px", 
+                overflowY: "auto",
+                paddingRight: "1rem"
+              }}
+              onScroll={handleScroll}
+            >
+              <style>
+                {`
+                  ::-webkit-scrollbar {
+                    width: 4px;
+                  }
+                  ::-webkit-scrollbar-track {
+                    background: #f1f1f1;
+                    border-radius: 10px;
+                  }
+                  ::-webkit-scrollbar-thumb {
+                    background: #ddd;
+                    border-radius: 10px;
+                  }
+                  ::-webkit-scrollbar-thumb:hover {
+                    background: #ccc;
+                  }
+                `}
+              </style>
+              
+              {conversation.length === 0 ? (
+                <div style={{ 
+                  textAlign: "center", 
+                  color: "#999",
+                  height: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}>
+                  <p>Start a conversation to see messages here</p>
+                </div>
+              ) : (
+                conversation.map((msg, idx) => (
+                  <div key={idx} style={{ 
+                    margin: "1rem 0",
+                    padding: "1rem",
+                    backgroundColor: msg.sender === "assistant" ? "#f8f8f8" : "transparent",
+                    borderRadius: "12px",
+                    border: msg.sender === "user" ? "1px solid #f0f0f0" : "none"
+                  }}>
+                    <strong style={{ 
+                      color: msg.sender === "assistant" ? "#666" : "#000",
+                      fontSize: "0.9rem",
+                      display: "block",
+                      marginBottom: "0.5rem"
+                    }}>
+                      {msg.sender === "assistant" ? "AI" : "You"}:
+                    </strong>
+                    <div style={{ color: "#1a1a1a", lineHeight: 1.5 }}>
+                      {msg.text}
+                    </div>
+                  </div>
+                ))
+              )}
+              <div ref={chatEndRef} />
+            </div>
+          </div>
+
+          {/* Status Indicator */}
+          <div style={{ 
+            marginTop: "1.5rem",
+            textAlign: "center",
+            color: "#666",
+            fontSize: "0.9rem"
+          }}>
+            <strong>Status:</strong> {status}
+          </div>
+        </div>
+
+        {/* Click outside to close settings menu */}
+        {showSettingsMenu && (
+          <div 
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 999
+            }}
+            onClick={() => setShowSettingsMenu(false)}
+          />
+        )}
+      </div>
+    );
+  };
 
   return (
     <Router>
       <Routes>
         <Route path="/" element={<VoiceAssistant />} />
-        <Route path="/admin" element={<AdminOrders />} /> {/* Changed from AdminPage to AdminOrders */}
+        <Route path="/admin" element={<AdminOrders />} />
       </Routes>
     </Router>
   );

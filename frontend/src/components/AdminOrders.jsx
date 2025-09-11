@@ -599,7 +599,7 @@ const AdminOrders = () => {
         <label style={{
           padding: "0.5rem 0.5rem",
           backgroundColor: "rgba(0, 0, 0, 0.02)",
-          color: "#1a1a1a",
+          color: "#ffffffff",
           border: "1.5px dashed #ddd",
           borderRadius: "12px",
           cursor: "pointer",
