@@ -51,7 +51,7 @@ export default function App() {
 
   const handleStart = async () => {
     setStatus("listening");
-    const welcomeMsg = "Welcome! Say 1 to order, 2 to get location, 3 to make reservation, 4 for client issues.";
+    const welcomeMsg = "Welcome! Say 1 to order, 2 to get Menu, 3 to make reservation, 4 for client issues.";
     addMessage("assistant", welcomeMsg);
     await speak(welcomeMsg);
     startListening();
@@ -62,13 +62,13 @@ export default function App() {
       const normalized = normalizeInput(result);
       addMessage("user", result);
 
-      if (normalized.includes("1") || normalized.includes("order")) {
+      if (normalized.includes("1") || normalized.includes("order")|| normalized.includes("one")) {
         handleOrderName();
-      } else if (normalized.includes("2") || normalized.includes("location")) {
-        handleLocation();
-      } else if (normalized.includes("3") || normalized.includes("reservation")) {
+      } else if (normalized.includes("2") || normalized.includes("menu")|| normalized.includes("two")) {
+        handleMenuInquiry();
+      } else if (normalized.includes("3") || normalized.includes("reservation") || normalized.includes("three") ) {
         handleReservation();
-      } else if (normalized.includes("4") || normalized.includes("issue")) {
+      } else if (normalized.includes("4") || normalized.includes("issue") || normalized.includes("four")) {
         handleClientIssue();
       } else {
         await speak("Didn't understand. Try again.");
@@ -201,6 +201,54 @@ export default function App() {
 
     addItem();
   };
+   // ========================= LOCATION =========================
+  const handleMenuInquiry = async () => {
+  const msg = "Sure! What would you like to know about our menu? You can ask about categories, specific dishes, prices, or dietary options.";
+  addMessage("assistant", msg);
+  await speak(msg);
+
+  listen(async (menuQuestion) => {
+    addMessage("user", menuQuestion);
+    setStatus("processing...");
+
+    try {
+      // Send to backend for RAG processing
+      const response = await axios.post("http://localhost:8000/menu-inquiry", {
+        question: menuQuestion
+      });
+      
+      const aiResponse = response.data.response;
+      addMessage("assistant", aiResponse);
+      await speak(aiResponse);
+      
+      // Ask if they want to know more
+      const continueMsg = "Would you like to know anything else about our menu? Say yes or no.";
+      addMessage("assistant", continueMsg);
+      await speak(continueMsg);
+
+      listen(async (answer) => {
+        const normalized = normalizeInput(answer);
+        addMessage("user", answer);
+        
+        if (normalized.includes("yes")) {
+          handleMenuInquiry(); // Restart menu inquiry
+        } else {
+          const goodbyeMsg = "Great! Let me know if you need anything else.";
+          addMessage("assistant", goodbyeMsg);
+          await speak(goodbyeMsg);
+          setStatus("idle");
+        }
+      }, handleError("Menu inquiry completed."));
+      
+    } catch (err) {
+      console.error("Menu inquiry error:", err);
+      const errorMsg = "Sorry, I couldn't process your menu question. Please try again.";
+      addMessage("assistant", errorMsg);
+      await speak(errorMsg);
+      setStatus("idle");
+    }
+  }, handleError("Menu inquiry aborted."));
+};
   // ========================= LOCATION =========================
   const handleLocation = async () => {
     const locationUrl = "https://www.google.com/maps/place/123+Main+Street,+City";
@@ -348,7 +396,7 @@ export default function App() {
   // Handle order cancellation or update
 const handleOrderCancellationUpdate = async (issueText) => {
   addMessage("assistant", "I can help you with your order issue. Please provide your order number.");
-  await speak("I can help you with your order issue. Please provide your order number."); // Added await
+  await speak("I can help you with your order issue. Please provide your order number.");
 
   listen(async (orderNumberInput) => {
     addMessage("user", orderNumberInput);
@@ -358,71 +406,76 @@ const handleOrderCancellationUpdate = async (issueText) => {
     
     if (!orderNumber) {
       addMessage("assistant", "I couldn't find a valid order number. Please try again with your order number.");
-      await speak("I couldn't find a valid order number. Please try again with your order number."); // Added await
+      await speak("I couldn't find a valid order number. Please try again with your order number.");
       handleOrderCancellationUpdate(issueText);
       return;
     }
 
-    try {
-      // Check if order exists and can be modified
-      const response = await axios.get(`http://localhost:8000/admin/orders`);
-      const orders = response.data.orders;
-      const order = orders.find(o => o.id === parseInt(orderNumber));
-      
-      if (!order) {
-        addMessage("assistant", `Order #${orderNumber} not found. Please check your order number.`);
-        await speak(`Order number ${orderNumber} not found. Please check your order number.`); // Added await
-        return;
-      }
+    // Ask for customer name for verification
+    addMessage("assistant", "Please provide your name for verification.");
+    await speak("Please provide your name for verification.");
 
-      // Check if order can be modified (within 5 minutes)
-      const orderDate = new Date(order.created_at);
-      const now = new Date();
-      const fiveMinutesAgo = new Date(now.getTime() - 5 * 60000);
-      
-      if (orderDate < fiveMinutesAgo) {
-        addMessage("assistant", `Sorry, order #${orderNumber} was placed more than 5 minutes ago and cannot be modified.`);
-        await speak(`Sorry, order number ${orderNumber} was placed more than 5 minutes ago and cannot be modified.`); // Added await
-        return;
-      }
+    listen(async (customerName) => {
+      addMessage("user", customerName);
 
-      // Determine action (cancel or update)
-      const lowerCaseIssue = issueText.toLowerCase();
-      if (lowerCaseIssue.includes("cancel")) {
-        // Cancel the order
-        await axios.patch(`http://localhost:8000/admin/orders/${orderNumber}`, {
-          status: "canceled"
-        });
+      try {
+        const lowerCaseIssue = issueText.toLowerCase();
         
-        addMessage("assistant", `Order #${orderNumber} has been successfully cancelled.`);
-        await speak(`Order number ${orderNumber} has been successfully cancelled.`); // Added await
-      } else if (lowerCaseIssue.includes("update")) {
-        addMessage("assistant", "What would you like to update? Please describe the changes.");
-        await speak("What would you like to update? Please describe the changes."); // Added await
-        
-        listen(async (updateDetails) => {
-          addMessage("user", updateDetails);
+        if (lowerCaseIssue.includes("cancel")) {
+          // Cancel the order using customer endpoint with proper request body
+          const response = await axios.patch(
+            `http://localhost:8000/customer/orders/${orderNumber}/cancel`,
+            { customer_name: customerName },
+            {
+              headers: {
+                "Content-Type": "application/json"
+              }
+            }
+          );
           
-          // For simplicity, we'll just note the update request
-          addMessage("assistant", `Update request for order #${orderNumber} has been noted: ${updateDetails}. Our team will contact you shortly.`);
-          await speak(`Update request for order number ${orderNumber} has been noted. Our team will contact you shortly.`); // Added await
+          addMessage("assistant", response.data.message || `Order #${orderNumber} has been successfully cancelled.`);
+          await speak(response.data.message || `Order number ${orderNumber} has been successfully cancelled.`);
+        } else if (lowerCaseIssue.includes("update")) {
+          addMessage("assistant", "What would you like to update? Please describe the changes.");
+          await speak("What would you like to update? Please describe the changes.");
           
-          // Ask if user wants to continue
-          await askToContinue(); // Added await
-        }, handleError("Update process aborted."));
+          listen(async (updateDetails) => {
+            addMessage("user", updateDetails);
+            
+            // For updates, we'll note the request since modifying orders is complex
+            addMessage("assistant", `Update request for order #${orderNumber} has been noted: ${updateDetails}. Our team will contact you shortly.`);
+            await speak(`Update request for order number ${orderNumber} has been noted. Our team will contact you shortly.`);
+            
+            // Ask if user wants to continue
+            await askToContinue();
+          }, handleError("Update process aborted."));
+          
+          return;
+        }
         
-        return;
+        // Ask if user wants to continue
+        await askToContinue();
+        
+      } catch (err) {
+        console.error("Order modification error:", err);
+        
+        if (err.response?.status === 404) {
+          addMessage("assistant", `Order #${orderNumber} not found. Please check your order number.`);
+          await speak(`Order number ${orderNumber} not found. Please check your order number.`);
+        } else if (err.response?.status === 403) {
+          addMessage("assistant", "The order number doesn't match your name. Please verify your information.");
+          await speak("The order number doesn't match your name. Please verify your information.");
+        } else if (err.response?.status === 400) {
+          addMessage("assistant", err.response.data.detail || "This order cannot be modified.");
+          await speak(err.response.data.detail || "This order cannot be modified.");
+        } else {
+          addMessage("assistant", "Sorry, there was an error processing your request. Please try again later.");
+          await speak("Sorry, there was an error processing your request. Please try again later.");
+        }
+        
+        setStatus("idle");
       }
-      
-      // Ask if user wants to continue
-      await askToContinue(); // Added await
-      
-    } catch (err) {
-      console.error("Order modification error:", err);
-      addMessage("assistant", "Sorry, there was an error processing your request. Please try again later.");
-      await speak("Sorry, there was an error processing your request. Please try again later."); // Added await
-      setStatus("idle");
-    }
+    }, handleError("Order process aborted."));
   }, handleError("Order process aborted."));
 };
 
